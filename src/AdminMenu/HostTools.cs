@@ -44,8 +44,18 @@ namespace AdminMenu
 
         // ---- Session -------------------------------------------------------------------------------------------
 
-        internal static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<MoonWalker> Walkers() =>
-            Object.FindObjectsByType<MoonWalker>(FindObjectsInactive.Exclude);
+        // The generic FindObjectsByType<T> throws "not a generic method definition" in this IL2CPP build; use the Type overload.
+        internal static System.Collections.Generic.List<MoonWalker> Walkers()
+        {
+            var found = new System.Collections.Generic.List<MoonWalker>();
+            foreach (var o in Object.FindObjectsByType(Il2CppInterop.Runtime.Il2CppType.Of<MoonWalker>(), FindObjectsSortMode.None))
+            {
+                var walker = o?.TryCast<MoonWalker>();
+                if (walker != null)
+                    found.Add(walker);
+            }
+            return found;
+        }
 
         /// <summary>The local player in a shift, or null in the menu or while loading.</summary>
         public static MoonWalker Walker()
@@ -415,7 +425,7 @@ namespace AdminMenu
         public static string RefillTools()
         {
             World();
-            var equipment = Walker().GetComponent<MoonPrototypeEquipment>() ?? throw new InvalidOperationException("no tools to refill");
+            var equipment = Walker().GetComponent(Il2CppInterop.Runtime.Il2CppType.Of<MoonPrototypeEquipment>())?.TryCast<MoonPrototypeEquipment>() ?? throw new InvalidOperationException("no tools to refill");
             equipment.ServiceTools();
             return "Brush serviced, battery full.";
         }
