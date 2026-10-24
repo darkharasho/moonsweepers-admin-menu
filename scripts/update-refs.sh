@@ -13,7 +13,7 @@ bepinex="${BEPINEX_CORE:-$game_root/BepInEx/core}"
 out="$root/lib/refs"
 
 # Keep in sync with the <Reference> items in src/AdminMenu/AdminMenu.csproj.
-game_dlls=(Assembly-CSharp com.rlabrecque.steamworks.net UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.TextRenderingModule UnityEngine.UI Unity.InputSystem)
+game_dlls=(Assembly-CSharp com.rlabrecque.steamworks.net UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.PhysicsModule UnityEngine.TextRenderingModule UnityEngine.UI Unity.InputSystem)
 bepinex_dlls=(BepInEx 0Harmony)
 
 rm -rf "$out"

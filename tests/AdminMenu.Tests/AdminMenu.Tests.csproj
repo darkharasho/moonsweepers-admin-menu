@@ -11,6 +11,7 @@
   <ItemGroup>
     <Compile Include="../../src/AdminMenu/MenuGate.cs" Link="MenuGate.cs" />
     <Compile Include="../../src/AdminMenu/KickList.cs" Link="KickList.cs" />
+    <Compile Include="../../src/AdminMenu/MoneyInput.cs" Link="MoneyInput.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -22,7 +22,7 @@ namespace AdminMenu
         public static readonly Color Muted = Rgb(0xA9, 0xAE, 0xB7);
         public static readonly Color Error = new Color(1f, 0.45f, 0.4f);
 
-        public static GUIStyle WindowStyle, RowStyle, Title, Heading, Body, MutedText, ErrorText, Button, DangerButton, Toast;
+        public static GUIStyle WindowStyle, RowStyle, Title, Heading, Body, MutedText, ErrorText, Button, DangerButton, TabOn, Field, Toast;
         public static Texture2D Dim;
 
         /// <summary>Recreates everything if a scene load destroyed the textures.</summary>
@@ -57,6 +57,19 @@ namespace AdminMenu
 
             Button = ButtonStyle(font, Gold);
             DangerButton = ButtonStyle(font, Error);
+            TabOn = ButtonStyle(font, Gold);
+            TabOn.normal.background = TabOn.hover.background = TabOn.active.background = TabOn.focused.background = Bordered(Gold, Gold, 2);
+            TabOn.normal.textColor = TabOn.hover.textColor = TabOn.active.textColor = TabOn.focused.textColor = Window;
+
+            Field = MakeLabel(font, 19, Theme.Text, FontStyle.Normal);
+            Field.alignment = TextAnchor.MiddleLeft;
+            Field.normal.background = Bordered(Surface, Line, 1);
+            Field.hover.background = Field.normal.background;
+            Field.focused.background = Field.active.background = Bordered(Surface, Gold, 1);
+            Field.hover.textColor = Field.focused.textColor = Field.active.textColor = Theme.Text;
+            Field.border = Edges(1);
+            Field.padding = new RectOffset(10, 10, 6, 6);
+            Field.margin = new RectOffset(0, 0, 0, 0);
 
             Toast = MakeLabel(font, 20, Gold, FontStyle.Bold);
             Toast.alignment = TextAnchor.MiddleCenter;

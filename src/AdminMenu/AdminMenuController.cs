@@ -13,11 +13,16 @@ namespace AdminMenu
     /// keyboard or mouse for play, Esc included, while it's set), <c>MoonWalker.UIBlocked</c> on in a shift, a free
     /// cursor, and the uGUI event system off so clicks don't reach the game's buttons underneath.
     /// </summary>
-    internal sealed class AdminMenuController : MonoBehaviour
+    internal sealed partial class AdminMenuController : MonoBehaviour
     {
         private const float ReferenceHeight = 1080f;
-        private const float WindowWidth = 920f;
-        private const float WindowHeight = 680f;
+        private const float WindowWidth = 1000f;
+        private const float WindowHeight = 760f;
+
+        private enum Tab { Crew, Money, Give, World }
+
+        private static readonly string[] TabNames = { "Crew", "Money", "Give", "World" };
+        private Tab _tab;
 
         private bool _open;
         private MoonWalker _walker;
@@ -254,12 +259,51 @@ namespace AdminMenu
             {
                 _members = new List<MoonSteamLobby.Member>(MoonSteamLobby.Members);
                 _removed = Kicks.List.Entries();
+                SnapshotHostTools();
             }
             var crewName = string.IsNullOrEmpty(MoonSteamLobby.CrewName) ? "Your crew" : MoonSteamLobby.CrewName;
             GUILayout.Label($"{crewName} · {_members.Count} of {MoonSteamLobby.MaxCrew}", Theme.MutedText);
 
-            _scroll = GUILayout.BeginScrollView(_scroll, GUILayout.ExpandHeight(true));
+            GUILayout.BeginHorizontal();
+            for (var i = 0; i < TabNames.Length; i++)
+            {
+                if (GUILayout.Button(TabNames[i], (Tab)i == _tab ? Theme.TabOn : Theme.Button, GUILayout.Width(140f), GUILayout.Height(40f)) && (Tab)i != _tab)
+                {
+                    _tab = (Tab)i;
+                    _scroll = Vector2.zero;
+                    _armedId = 0;
+                }
+            }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(4f);
 
+            _scroll = GUILayout.BeginScrollView(_scroll, GUILayout.ExpandHeight(true));
+            switch (_tab)
+            {
+                case Tab.Money:
+                    DrawMoney();
+                    break;
+                case Tab.Give:
+                    DrawGive();
+                    break;
+                case Tab.World:
+                    DrawWorld();
+                    break;
+                default:
+                    DrawCrew();
+                    break;
+            }
+            GUILayout.EndScrollView();
+
+            GUILayout.Space(6f);
+            GUILayout.Label(string.IsNullOrEmpty(_status) ? " " : _status, _statusError ? Theme.ErrorText : Theme.MutedText);
+
+            GUILayout.EndArea();
+        }
+
+        private void DrawCrew()
+        {
             GUILayout.Label("CREW", Theme.Heading);
             foreach (var member in _members)
                 DrawMember(member);
@@ -270,16 +314,12 @@ namespace AdminMenu
             foreach (var player in _removed)
                 DrawRemoved(player);
 
-            GUILayout.EndScrollView();
-
+            GUILayout.Space(8f);
             GUILayout.Label(
                 "A kicked player is cut off from your Moon and can't rejoin your shift. Without this mod they stay in the " +
-                "Steam lobby until they leave, and crewmates without it can still see them; anyone with the mod drops them too.",
+                "Steam lobby until they leave, and crewmates without it can still see them; anyone with the mod drops them too. " +
+                "Knock down bowls a crewmate over the way a vehicle does; they get straight back up.",
                 Theme.MutedText);
-            GUILayout.Space(6f);
-            GUILayout.Label(string.IsNullOrEmpty(_status) ? " " : _status, _statusError ? Theme.ErrorText : Theme.MutedText);
-
-            GUILayout.EndArea();
         }
 
         private void DrawMember(MoonSteamLobby.Member member)
@@ -291,6 +331,8 @@ namespace AdminMenu
             GUILayout.FlexibleSpace();
             if (KickRules.CanRemove(member.id, MoonSteam.SteamId, MoonSteamLobby.HostId))
             {
+                if (_inShift.Contains(member.id) && GUILayout.Button("Knock down", Theme.Button, GUILayout.Height(36f)))
+                    Run("Knock down", () => HostTools.Knock(member.id));
                 ConfirmButton(member.id, "Kick", () => Kicks.Remove(member.id, ban: false));
                 ConfirmButton(member.id, "Ban", () => Kicks.Remove(member.id, ban: true));
             }

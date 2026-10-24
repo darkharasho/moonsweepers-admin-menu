@@ -19,13 +19,15 @@ IMGUI (`AdminMenuController.OnGUI`, styles in `Theme.cs`): the game has no UI To
 - `src/AdminMenu/Plugin.cs`: config (ToggleKey, CloseOnEscape, Bans), Harmony, creates the controller
 - `src/AdminMenu/AdminMenuController.cs`: hotkey, open/close, input lock, drawing
 - `src/AdminMenu/Kicks.cs`: every call into the game for kicking; `Patches/LobbyPatches.cs`
-- `src/AdminMenu/KickList.cs`, `MenuGate.cs`: pure logic, tested by `tests/AdminMenu.Tests`
+- `src/AdminMenu/HostTools.cs`: every call into the game for the Money, Give and World tabs and Knock down; drawn by `AdminMenuController.HostTools.cs`
+- `src/AdminMenu/KickList.cs`, `MenuGate.cs`, `MoneyInput.cs`: pure logic, tested by `tests/AdminMenu.Tests`
 - `scripts/package.sh` builds the Thunderstore zip; `scripts/update-refs.sh` regenerates `lib/refs` for CI
 - Release: bump the version in `Plugin.cs`, the csproj, `thunderstore/manifest.json` and `CHANGELOG.md`, then push tag `v<version>` (Thunderstore and GitHub), or `v<version>-<suffix>` for a GitHub-only prerelease
 
 ## Notes
 
 - Decompile with `DOTNET_ROOT=/home/linuxbrew/.linuxbrew/opt/dotnet/libexec nice -n 19 taskset -c 0-3 ~/.dotnet/tools/ilspycmd -p -o /tmp/moonsweepers-src ".../Moon Sweepers/MoonSweepers_Data/Managed/Assembly-CSharp.dll"`. Run builds and tests the same low-priority way; this machine freezes under full CPU load.
-- BepInEx and the mod are managed by HML (`~/Documents/GitHub/hml`): Moon Sweepers is a custom Steam game there (`steam-5335510`, BepInEx 5), profile `default`, with the mod installed from this repo's GitHub releases (pre-releases on). Start it with HML's **Start modded**, which also sets up the Proton prefix; nothing goes in the game folder. `dotnet build` deploys into that profile's `BepInEx/plugins/darkharasho-moonsweepers-admin-menu`, overwriting the release DLL until HML next updates it.
+- BepInEx and the mod are managed by HML (`~/Documents/GitHub/hml`): Moon Sweepers is a custom Steam game there (`steam-5335510`, BepInEx 5), profile `default`, with the mod installed from this repo's GitHub releases (pre-releases on). Start it with HML's **Start modded**, which also sets up the Proton prefix; nothing goes in the game folder. `dotnet build -p:Deploy=true` copies the DLL into that profile's `BepInEx/plugins/darkharasho-moonsweepers-admin-menu`; never while the game runs (it maps the DLL). Otherwise install `dist/` zips through HML.
 - Thunderstore had no Moon Sweepers community at first release. The workflow's `--community moon-sweepers` is a placeholder with `continue-on-error`; set the real slug once it exists and remove `continue-on-error`.
+- Host tools: the host's `MoonWorld` is authoritative for the shared wallet (`CrewBuildMoney`, synced by `Kind.Wallet`) and per-player tools and upgrades (ids `"local"` / `"steam-<id64>"`, synced by the upgrade truth digest), so nothing needs crewmates modded. Grants add the price, then call the game's `TryPurchase*`, so purchase rules and saving apply; `MoonAchievements.NotEarned` keeps mod money out of Steam stats. The game's dev menu is behind `MoonDevTools.Enabled` (false in release, and true spawns a vehicle test yard), so we call what's underneath instead of patching it. A remote player's position and carried dust are theirs (`Kind.PlayerState`), so teleporting or giving dust to others would need them modded; `RunOver` is the only host-to-player body message.
 - Protocol byte is 38 (`MoonCrewSession.Protocol`); the lobby version check means everyone runs the same game build.

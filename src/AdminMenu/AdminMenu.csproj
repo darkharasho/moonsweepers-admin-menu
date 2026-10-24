@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>AdminMenu</AssemblyName>
     <RootNamespace>AdminMenu</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -16,7 +16,8 @@
   <Import Project="$(MSBuildThisFileDirectory)../../Local.props" Condition="Exists('$(MSBuildThisFileDirectory)../../Local.props')" />
 
   <!-- BepInEx and the mod are managed by HML (Moon Sweepers is a custom Steam game there, label steam-5335510).
-       Dev builds go into the plugin folder HML installed the GitHub release to, so only one copy ever loads. -->
+       With -p:Deploy=true, builds go into the plugin folder HML installed the release to, so only one copy loads.
+       Never deploy while the game runs: it maps the DLL, and rewriting it in place can crash it. -->
   <PropertyGroup>
     <GamePath Condition="'$(GamePath)' == ''">/var/mnt/data/SteamLibrary/steamapps/common/Moon Sweepers</GamePath>
     <ProfilePath Condition="'$(ProfilePath)' == ''">$(HOME)/.config/hml/games/steam-5335510/profiles/default</ProfilePath>
@@ -43,12 +44,13 @@
     <Reference Include="UnityEngine" HintPath="$(ManagedPath)/UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedPath)/UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.IMGUIModule" HintPath="$(ManagedPath)/UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(ManagedPath)/UnityEngine.PhysicsModule.dll" Private="false" />
     <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(ManagedPath)/UnityEngine.TextRenderingModule.dll" Private="false" />
     <Reference Include="UnityEngine.UI" HintPath="$(ManagedPath)/UnityEngine.UI.dll" Private="false" />
     <Reference Include="Unity.InputSystem" HintPath="$(ManagedPath)/Unity.InputSystem.dll" Private="false" />
   </ItemGroup>
 
-  <Target Name="DeployToProfile" AfterTargets="Build" Condition="Exists('$(ProfilePath)/BepInEx/plugins')">
+  <Target Name="DeployToProfile" AfterTargets="Build" Condition="'$(Deploy)' == 'true' And Exists('$(ProfilePath)/BepInEx/plugins')">
     <MakeDir Directories="$(DeployPath)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployPath)" />
     <Message Importance="high" Text="Deployed $(TargetFileName) to $(DeployPath)" />
