@@ -15,13 +15,14 @@
   <!-- Machine-specific paths. Override in Local.props (gitignored) or with -p:GamePath=... -->
   <Import Project="$(MSBuildThisFileDirectory)../../Local.props" Condition="Exists('$(MSBuildThisFileDirectory)../../Local.props')" />
 
-  <!-- There's no r2modman community for Moon Sweepers yet, so BepInEx is installed straight into the game folder. -->
+  <!-- BepInEx and the mod are managed by HML (Moon Sweepers is a custom Steam game there, label steam-5335510).
+       Dev builds go into the plugin folder HML installed the GitHub release to, so only one copy ever loads. -->
   <PropertyGroup>
     <GamePath Condition="'$(GamePath)' == ''">/var/mnt/data/SteamLibrary/steamapps/common/Moon Sweepers</GamePath>
-    <ProfilePath Condition="'$(ProfilePath)' == ''">$(GamePath)</ProfilePath>
+    <ProfilePath Condition="'$(ProfilePath)' == ''">$(HOME)/.config/hml/games/steam-5335510/profiles/default</ProfilePath>
     <ManagedPath>$(GamePath)/MoonSweepers_Data/Managed</ManagedPath>
     <BepInExCorePath>$(ProfilePath)/BepInEx/core</BepInExCorePath>
-    <DeployPath>$(ProfilePath)/BepInEx/plugins/darkharasho-MoonSweepersAdminMenu</DeployPath>
+    <DeployPath>$(ProfilePath)/BepInEx/plugins/darkharasho-moonsweepers-admin-menu</DeployPath>
   </PropertyGroup>
 
   <!-- Without the game installed (CI), or with -p:UseRefs=true, build against the reference

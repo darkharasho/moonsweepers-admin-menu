@@ -26,6 +26,6 @@ IMGUI (`AdminMenuController.OnGUI`, styles in `Theme.cs`): the game has no UI To
 ## Notes
 
 - Decompile with `DOTNET_ROOT=/home/linuxbrew/.linuxbrew/opt/dotnet/libexec nice -n 19 taskset -c 0-3 ~/.dotnet/tools/ilspycmd -p -o /tmp/moonsweepers-src ".../Moon Sweepers/MoonSweepers_Data/Managed/Assembly-CSharp.dll"`. Run builds and tests the same low-priority way; this machine freezes under full CPU load.
-- BepInEx 5 is installed straight into the game folder (no r2modman community). Steam launch options need `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
+- BepInEx and the mod are managed by HML (`~/Documents/GitHub/hml`): Moon Sweepers is a custom Steam game there (`steam-5335510`, BepInEx 5), profile `default`, with the mod installed from this repo's GitHub releases (pre-releases on). Start it with HML's **Start modded**, which also sets up the Proton prefix; nothing goes in the game folder. `dotnet build` deploys into that profile's `BepInEx/plugins/darkharasho-moonsweepers-admin-menu`, overwriting the release DLL until HML next updates it.
 - Thunderstore had no Moon Sweepers community at first release. The workflow's `--community moon-sweepers` is a placeholder with `continue-on-error`; set the real slug once it exists and remove `continue-on-error`.
 - Protocol byte is 38 (`MoonCrewSession.Protocol`); the lobby version check means everyone runs the same game build.
