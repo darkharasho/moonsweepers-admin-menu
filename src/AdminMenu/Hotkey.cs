@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -28,16 +27,16 @@ namespace AdminMenu
             [KeyCode.KeypadPeriod] = Key.NumpadPeriod,
         };
 
-        public static bool WasPressed(KeyboardShortcut shortcut)
+        public static bool WasPressed(Shortcut shortcut)
         {
             var keyboard = Keyboard.current;
             if (keyboard == null || shortcut.MainKey == KeyCode.None)
                 return false;
-            if (!TryGetKey(shortcut.MainKey, out var main) || !keyboard[main].wasPressedThisFrame)
+            if (!TryGetKey(shortcut.MainKey, out var main) || !keyboard.get_Item(main).wasPressedThisFrame)
                 return false;
             foreach (var modifier in shortcut.Modifiers)
             {
-                if (!TryGetKey(modifier, out var key) || !keyboard[key].isPressed)
+                if (!TryGetKey(modifier, out var key) || !keyboard.get_Item(key).isPressed)
                     return false;
             }
             return true;

@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using HarmonyLib;
 using MoonCleaners;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -29,8 +27,6 @@ namespace AdminMenu
         /// <summary>Highest balance the menu will set, well inside what the game's decimal money and UI can show.</summary>
         public const decimal MaxBalance = 1_000_000_000_000m;
 
-        private static readonly MethodInfo CommitRegion = AccessTools.Method(typeof(MoonWorld), "CommitRegion");
-
         public sealed class Tool
         {
             public string Id;
@@ -48,12 +44,15 @@ namespace AdminMenu
 
         // ---- Session -------------------------------------------------------------------------------------------
 
+        internal static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<MoonWalker> Walkers() =>
+            Object.FindObjectsByType<MoonWalker>(FindObjectsInactive.Exclude);
+
         /// <summary>The local player in a shift, or null in the menu or while loading.</summary>
         public static MoonWalker Walker()
         {
             if (!MoonSession.InGame || MoonSession.Loading)
                 return null;
-            foreach (var walker in Object.FindObjectsByType<MoonWalker>(FindObjectsInactive.Exclude))
+            foreach (var walker in Walkers())
             {
                 if (walker != null && walker.world != null)
                     return walker;
@@ -85,16 +84,16 @@ namespace AdminMenu
         public static decimal? Balance()
         {
             var world = Walker()?.world;
-            return world == null ? (decimal?)null : world.WalletDollars();
+            return world == null ? (decimal?)null : GameMoney.Wallet(world);
         }
 
-        public static string Money(decimal dollars) => MoonWorld.FormatMoney(dollars);
+        public static string Money(decimal dollars) => GameMoney.Format(dollars);
 
         /// <summary>Adds (or with a negative amount removes) money, clamped to 0 and <see cref="MaxBalance"/>.</summary>
         public static string AddMoney(decimal amount)
         {
             var world = World();
-            var before = world.WalletDollars();
+            var before = GameMoney.Wallet(world);
             var after = Math.Min(MaxBalance, Math.Max(0m, before + amount));
             ChangeMoney(world, after - before);
             return amount >= 0m
@@ -106,7 +105,7 @@ namespace AdminMenu
         {
             var world = World();
             var after = Math.Min(MaxBalance, Math.Max(0m, balance));
-            ChangeMoney(world, after - world.WalletDollars());
+            ChangeMoney(world, after - GameMoney.Wallet(world));
             return $"The crew has {Money(after)}.";
         }
 
@@ -115,8 +114,8 @@ namespace AdminMenu
         {
             if (delta == 0m)
                 return;
-            world.CrewBuildMoney("local", delta);
-            MoonAchievements.NotEarned("local", delta);
+            GameMoney.Add(world, "local", delta);
+            GameMoney.NotEarned("local", delta);
             world.RequestSave();
         }
 
@@ -165,9 +164,9 @@ namespace AdminMenu
             var player = PlayerId(steamId);
             if (world.ToolLevel(toolId, player) >= 0)
                 return $"{Kicks.NameFor(steamId)} already has that tool.";
-            if (!world.TryGetToolPrice(toolId, player, out var price))
+            if (!GameMoney.ToolPrice(world, toolId, player, out var price))
                 throw new InvalidOperationException("that tool can't be given");
-            Grant(world, price, () => (world.TryPurchaseTool(player, toolId, -1, out var m), m));
+            Grant(world, price, () => { var ok = world.TryPurchaseTool(player, toolId, -1, out var m); return (ok, (string)m); });
             return $"Gave {Kicks.NameFor(steamId)} the {ToolName(world, toolId)}.";
         }
 
@@ -207,9 +206,9 @@ namespace AdminMenu
             var given = 0;
             foreach (var tool in Tools())
             {
-                if (world.ToolLevel(tool.Id, player) >= 0 || !world.TryGetToolPrice(tool.Id, player, out var price))
+                if (world.ToolLevel(tool.Id, player) >= 0 || !GameMoney.ToolPrice(world, tool.Id, player, out var price))
                     continue;
-                Grant(world, price, () => (world.TryPurchaseTool(player, tool.Id, -1, out var m), m));
+                Grant(world, price, () => { var ok = world.TryPurchaseTool(player, tool.Id, -1, out var m); return (ok, (string)m); });
                 given++;
             }
             foreach (var node in AllNodes())
@@ -234,12 +233,13 @@ namespace AdminMenu
         {
             if (!seen.Add(node.id))
                 return;
-            if (world.TreeToolMissing(player, node) && world.TryGetToolPrice(node.tool, player, out var price))
-                Grant(world, price, () => (world.TryPurchaseTool(player, node.tool, -1, out var m), m));
+            if (world.TreeToolMissing(player, node) && GameMoney.ToolPrice(world, node.tool, player, out var price))
+                Grant(world, price, () => { var ok = world.TryPurchaseTool(player, node.tool, -1, out var m); return (ok, (string)m); });
             if (world.TreeRequirementsMet(player, node))
                 return;
             // For "any of" requirements one is enough; take the first.
-            foreach (var (id, level) in node.requiresAny ? node.requires.Take(1) : node.requires)
+            var requires = Requirements(node);
+            foreach (var (id, level) in node.requiresAny ? requires.Take(1) : requires)
             {
                 var required = MoonUpgradeTree.Find(id);
                 if (required == null)
@@ -250,12 +250,37 @@ namespace AdminMenu
             }
         }
 
+        /// <summary>
+        /// A node's (upgrade id, level) requirements. The game stores them as an array of value tuples, which the
+        /// interop wrapper can't index (it treats elements as object pointers), so the array is read raw: a 0x20 byte
+        /// header, then 16-byte elements of a string pointer and an int.
+        /// </summary>
+        private static List<(string id, int level)> Requirements(MoonUpgradeTree.Node node)
+        {
+            var result = new List<(string, int)>();
+            var array = node.requires;
+            if (array == null)
+                return result;
+            var pointer = array.Pointer;
+            var length = (int)System.Runtime.InteropServices.Marshal.ReadInt64(pointer, 0x18);
+            for (var i = 0; i < length; i++)
+            {
+                var element = IntPtr.Add(pointer, 0x20 + i * 16);
+                var text = System.Runtime.InteropServices.Marshal.ReadIntPtr(element);
+                var level = System.Runtime.InteropServices.Marshal.ReadInt32(element, 8);
+                var id = text == IntPtr.Zero ? null : Il2CppInterop.Runtime.IL2CPP.Il2CppStringToManaged(text);
+                if (!string.IsNullOrEmpty(id))
+                    result.Add((id, level));
+            }
+            return result;
+        }
+
         private static void Raise(MoonWorld world, string player, MoonUpgradeTree.Node node)
         {
             var level = world.TreeLevel(player, node.id);
-            if (!world.TryGetTreePrice(player, node.id, out var price))
+            if (!GameMoney.TreePrice(world, player, node.id, out var price))
                 throw new InvalidOperationException($"{MoonLoc.T(node.title)} can't be raised");
-            Grant(world, price, () => (world.TryPurchaseTreeNode(player, node.id, level, out var m), m));
+            Grant(world, price, () => { var ok = world.TryPurchaseTreeNode(player, node.id, level, out var m); return (ok, (string)m); });
         }
 
         /// <summary>Pays for one purchase out of the mod's pocket: adds the price, buys, and takes it back on failure.</summary>
@@ -275,7 +300,7 @@ namespace AdminMenu
             if (result.ok)
             {
                 // The purchase spent the price again; that's not the host spending money either.
-                MoonAchievements.NotEarned("local", -price);
+                GameMoney.NotEarned("local", -price);
                 return;
             }
             ChangeMoney(world, -price);
@@ -319,7 +344,7 @@ namespace AdminMenu
         {
             var world = World();
             var regions = world.Regions;
-            if (regions == null || CommitRegion == null)
+            if (regions == null)
                 throw new InvalidOperationException("cleaning is unavailable on this game version");
             var start = regions.Find(Walker().transform.position - world.transform.position);
             var all = new List<int> { start };
@@ -344,7 +369,7 @@ namespace AdminMenu
             {
                 if (world.IsRegionComplete(region))
                     continue;
-                CommitRegion.Invoke(world, new object[] { region, false, null, false });
+                world.CommitRegion(region, false, null, false);
                 cleaned++;
             }
             return cleaned == 0 ? "Already clean here." : $"Cleaned {cleaned} {(cleaned == 1 ? "hex" : "hexes")}.";
@@ -443,9 +468,9 @@ namespace AdminMenu
         private static MoonRemotePlayer Crewmate(ulong steamId)
         {
             var session = MoonCrewSession.Instance;
-            if (session == null || !MoonSession.InGame)
+            if (session == null || !MoonSession.InGame || session.remotes == null)
                 return null;
-            return session.Crewmates.FirstOrDefault(c => c != null && c.SteamId == steamId);
+            return session.remotes.TryGetValue(steamId, out var player) && player != null && player.SteamId == steamId ? player : null;
         }
 
         /// <summary>

@@ -2,20 +2,23 @@ using System;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using BepInEx.Unity.IL2CPP;
 using HarmonyLib;
 using UnityEngine;
 
 namespace AdminMenu
 {
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
-    public class Plugin : BaseUnityPlugin
+    public class Plugin : BasePlugin
     {
         public const string PluginGuid = "com.darkharasho.moonsweepers.adminmenu";
         public const string PluginName = "AdminMenu";
-        public const string PluginVersion = "0.2.0";
+        public const string PluginVersion = "0.3.0";
 
-        internal static ManualLogSource Log;
-        internal static ConfigEntry<KeyboardShortcut> ToggleKey;
+        internal static new ManualLogSource Log;
+        internal static ConfigEntry<string> ToggleKey;
+        /// <summary>The parsed <see cref="ToggleKey"/>.</summary>
+        internal static Shortcut ToggleShortcut => Shortcut.Parse(ToggleKey.Value);
         internal static ConfigEntry<bool> CloseOnEscape;
         internal static ConfigEntry<string> Bans;
 
@@ -24,12 +27,12 @@ namespace AdminMenu
 
         private Harmony _harmony;
 
-        private void Awake()
+        public override void Load()
         {
-            Log = Logger;
+            Log = base.Log;
 
-            ToggleKey = Config.Bind("General", "ToggleKey", new KeyboardShortcut(KeyCode.F1), new ConfigDescription(
-                "Opens and closes the admin menu. Only the host of a crew can open it.",
+            ToggleKey = Config.Bind("General", "ToggleKey", "F1", new ConfigDescription(
+                "Opens and closes the admin menu (a Unity KeyCode, optionally with modifiers: F1 or F1 + LeftControl). Only the host of a crew can open it.",
                 null,
                 new ConfigurationManagerAttributes { DispName = "Toggle key", Order = 3 }));
             CloseOnEscape = Config.Bind("General", "CloseOnEscape", true, new ConfigDescription(
@@ -54,15 +57,16 @@ namespace AdminMenu
             }
             Kicks.Init();
 
-            // Its own object, so it outlives scene loads and doesn't depend on BepInEx's manager object staying alive.
-            var host = new GameObject("AdminMenu");
-            DontDestroyOnLoad(host);
-            host.hideFlags = HideFlags.HideAndDontSave;
-            host.AddComponent<AdminMenuController>();
+            // Registers the class with IL2CPP and puts it on BepInEx's persistent manager object.
+            AddComponent<AdminMenuController>();
 
-            Log.LogInfo($"{PluginName} {PluginVersion} loaded; press {ToggleKey.Value} while hosting a crew to open the admin menu");
+            Log.LogInfo($"{PluginName} {PluginVersion} loaded; press {ToggleShortcut} while hosting a crew to open the admin menu");
         }
 
-        private void OnDestroy() => _harmony?.UnpatchSelf();
+        public override bool Unload()
+        {
+            _harmony?.UnpatchSelf();
+            return true;
+        }
     }
 }

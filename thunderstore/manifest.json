@@ -1,9 +1,9 @@
 {
     "name": "MoonSweepersAdminMenu",
-    "version_number": "0.2.0",
+    "version_number": "0.3.0",
     "website_url": "https://github.com/darkharasho/moonsweepers-admin-menu",
     "description": "Host admin menu for Moon Sweepers (F1): kick, ban or knock down crewmates, give money, tools and upgrades, set the time of day, and fly. Crewmates don't need the mod.",
     "dependencies": [
-        "BepInEx-BepInExPack-5.4.2305"
+        "BepInEx-BepInExPack_IL2CPP-6.0.788"
     ]
 }

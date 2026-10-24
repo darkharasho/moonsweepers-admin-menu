@@ -7,7 +7,7 @@ namespace AdminMenu
     /// <summary>
     /// IMGUI styles in the look of darkharasho's other admin menus: near-black window, slate grey buttons with a thin
     /// gold outline, and off-white text. Moon Sweepers has no UI Toolkit theme to borrow, so the menu is IMGUI, like the
-    /// game's own crew notices. Build only inside OnGUI (GUI.skin isn't available elsewhere).
+    /// game's own crew notices. Build only inside OnGUI (GUI.skin isn't available elsewhere); layout is by hand, see Ui.cs, so margins aren't used.
     /// </summary>
     internal static class Theme
     {
@@ -43,17 +43,20 @@ namespace AdminMenu
 
             Dim = Solid(new Color(0f, 0f, 0f, 0.7f));
             WindowStyle = new GUIStyle { normal = { background = Bordered(Window, WindowBorder, 3) }, border = Edges(3), padding = Edges(24) };
-            RowStyle = new GUIStyle { normal = { background = Bordered(Surface, Line, 1) }, border = Edges(1), padding = new RectOffset(14, 10, 8, 8), margin = new RectOffset(0, 0, 0, 6) };
+            RowStyle = new GUIStyle { normal = { background = Bordered(Surface, Line, 1) }, border = Edges(1), padding = Offset(14, 10, 8, 8), margin = Offset(0, 0, 0, 6) };
 
             Title = MakeLabel(font, 34, Theme.Text, FontStyle.Bold);
+            Title.alignment = TextAnchor.MiddleLeft;
             Heading = MakeLabel(font, 22, Gold, FontStyle.Bold);
-            Heading.margin = new RectOffset(0, 0, 14, 8);
+            Heading.alignment = TextAnchor.MiddleLeft;
             Body = MakeLabel(font, 19, Theme.Text, FontStyle.Normal);
             Body.alignment = TextAnchor.MiddleLeft;
             MutedText = MakeLabel(font, 16, Muted, FontStyle.Normal);
             MutedText.wordWrap = true;
+            MutedText.alignment = TextAnchor.MiddleLeft;
             ErrorText = MakeLabel(font, 16, Error, FontStyle.Normal);
             ErrorText.wordWrap = true;
+            ErrorText.alignment = TextAnchor.MiddleLeft;
 
             Button = ButtonStyle(font, Gold);
             DangerButton = ButtonStyle(font, Error);
@@ -68,14 +71,33 @@ namespace AdminMenu
             Field.focused.background = Field.active.background = Bordered(Surface, Gold, 1);
             Field.hover.textColor = Field.focused.textColor = Field.active.textColor = Theme.Text;
             Field.border = Edges(1);
-            Field.padding = new RectOffset(10, 10, 6, 6);
-            Field.margin = new RectOffset(0, 0, 0, 0);
+            Field.padding = Offset(10, 10, 6, 6);
+            Field.margin = Offset(0, 0, 0, 0);
 
             Toast = MakeLabel(font, 20, Gold, FontStyle.Bold);
             Toast.alignment = TextAnchor.MiddleCenter;
             Toast.normal.background = Bordered(Window, Gold, 2);
             Toast.border = Edges(2);
-            Toast.padding = new RectOffset(18, 18, 10, 10);
+            Toast.padding = Offset(18, 18, 10, 10);
+        }
+
+        /// <summary>Rough pixel width of one line of text; IMGUI's own measuring needs layout internals this build lacks.</summary>
+        public static float TextWidth(string text, GUIStyle style) =>
+            (text?.Length ?? 0) * style.fontSize * (style.fontStyle == FontStyle.Bold ? 0.6f : 0.54f);
+
+        /// <summary>Estimated height of <paramref name="text"/> wrapped (if the style wraps) into <paramref name="width"/>.</summary>
+        public static float TextHeight(string text, GUIStyle style, float width)
+        {
+            var lineHeight = style.fontSize * 1.35f;
+            var lines = 1;
+            if (style.wordWrap && !string.IsNullOrEmpty(text))
+            {
+                var perLine = Math.Max(1f, width / (style.fontSize * 0.54f));
+                lines = 0;
+                foreach (var part in text.Split('\n'))
+                    lines += Math.Max(1, (int)Math.Ceiling(part.Length / perLine));
+            }
+            return lines * lineHeight + 4f;
         }
 
         private static GUIStyle ButtonStyle(Font font, Color outline)
@@ -86,8 +108,8 @@ namespace AdminMenu
             style.hover.background = style.active.background = style.focused.background = Bordered(ControlHover, outline, 2);
             style.hover.textColor = style.active.textColor = style.focused.textColor = Theme.Text;
             style.border = Edges(2);
-            style.padding = new RectOffset(14, 14, 6, 6);
-            style.margin = new RectOffset(6, 0, 0, 0);
+            style.padding = Offset(14, 14, 6, 6);
+            style.margin = Offset(6, 0, 0, 0);
             return style;
         }
 
@@ -100,7 +122,10 @@ namespace AdminMenu
             return style;
         }
 
-        private static RectOffset Edges(int px) => new RectOffset(px, px, px, px);
+        private static RectOffset Offset(int left, int right, int top, int bottom) =>
+            new RectOffset { left = left, right = right, top = top, bottom = bottom };
+
+        private static RectOffset Edges(int px) => Offset(px, px, px, px);
 
         private static Texture2D Solid(Color color)
         {

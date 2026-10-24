@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using HarmonyLib;
 using MoonCleaners;
 using Steamworks;
 
@@ -32,26 +30,13 @@ namespace AdminMenu
         private static string _written;
         private static bool _leavePending;
 
-        private static List<MoonSteamLobby.Member> _members;
-        private static MethodInfo _refreshMembers;
-        private static MethodInfo _updatePresence;
-        private static FieldInfo _changed;
-        private static MethodInfo _notify;
-
         public static void Init()
         {
             List.LoadBans(Plugin.Bans.Value);
-            _members = AccessTools.Field(typeof(MoonSteamLobby), "members")?.GetValue(null) as List<MoonSteamLobby.Member>;
-            _refreshMembers = AccessTools.Method(typeof(MoonSteamLobby), "RefreshMembers");
-            _updatePresence = AccessTools.Method(typeof(MoonSteamLobby), nameof(MoonSteamLobby.UpdatePresence));
-            _changed = AccessTools.Field(typeof(MoonSteamLobby), nameof(MoonSteamLobby.Changed));
-            _notify = AccessTools.Method(typeof(MoonCrewSession), "Notify", new[] { typeof(string) });
-            if (_members == null || _refreshMembers == null)
-                Plugin.Log.LogError("MoonSteamLobby.members or RefreshMembers not found, likely a game update; kicking won't work.");
         }
 
         /// <summary>Whether kicking can work at all on this game version.</summary>
-        public static bool Available => Plugin.PatchesApplied && _members != null && _refreshMembers != null;
+        public static bool Available => Plugin.PatchesApplied;
 
         /// <summary>
         /// Whether this machine should ignore <paramref name="id"/>: the host goes by its own list, crewmates by the
@@ -105,14 +90,24 @@ namespace AdminMenu
                     _leavePending = true;
             }
 
-            if (_members == null)
+            var members = MoonSteamLobby.members;
+            if (members == null)
                 return;
-            var removed = _members.RemoveAll(m => m != null && !m.local && !m.host && IsBlocked(m.id));
+            var removed = 0;
+            for (var i = members.Count - 1; i >= 0; i--)
+            {
+                var m = members.get_Item(i);
+                if (m != null && !m.local && !m.host && IsBlocked(m.id))
+                {
+                    members.RemoveAt(i);
+                    removed++;
+                }
+            }
             if (removed > 0)
             {
-                _updatePresence?.Invoke(null, null);
+                MoonSteamLobby.UpdatePresence();
                 // The game raised Changed with the unfiltered list a moment ago; raise it again for the menus showing it.
-                (_changed?.GetValue(null) as Action)?.Invoke();
+                MoonSteamLobby.Changed?.Invoke();
             }
         }
 
@@ -202,7 +197,7 @@ namespace AdminMenu
         }
 
         /// <summary>Rebuilds the game's member list now, so a kick takes effect this frame.</summary>
-        private static void Refresh() => _refreshMembers?.Invoke(null, null);
+        private static void Refresh() => MoonSteamLobby.RefreshMembers();
 
         private static void SaveBans() => Plugin.Bans.Value = List.SaveBans();
 
@@ -223,7 +218,7 @@ namespace AdminMenu
             try
             {
                 if (MoonSession.InGame && MoonCrewSession.Instance != null)
-                    _notify?.Invoke(MoonCrewSession.Instance, new object[] { message });
+                    MoonCrewSession.Instance.Notify(message);
             }
             catch (Exception e)
             {

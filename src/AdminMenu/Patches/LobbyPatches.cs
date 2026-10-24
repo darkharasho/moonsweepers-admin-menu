@@ -9,7 +9,7 @@ namespace AdminMenu
     {
         private static bool _loggedError;
 
-        [HarmonyPatch(typeof(MoonSteamLobby), "RefreshMembers")]
+        [HarmonyPatch(typeof(MoonSteamLobby), nameof(MoonSteamLobby.RefreshMembers))]
         private static class RefreshMembersPatch
         {
             private static void Postfix()

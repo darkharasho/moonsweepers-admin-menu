@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Ported to the game's IL2CPP build (BepInEx 6). Needs BepInExPack_IL2CPP; the Mono build (0.2.0 and older) no longer loads.
+- The menu is drawn without IMGUI's automatic layout, which doesn't work in the IL2CPP build. Look and features are the same.
+- The toggle key setting is now text (`F1`, or `F1 + LeftControl`).
+
 ## 0.2.0
 
 - Money tab: add, remove or set the crew's balance.

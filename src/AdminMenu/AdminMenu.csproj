@@ -1,53 +1,50 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>AdminMenu</AssemblyName>
     <RootNamespace>AdminMenu</RootNamespace>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <DebugType>embedded</DebugType>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <!-- Machine-specific paths. Override in Local.props (gitignored) or with -p:GamePath=... -->
+  <!-- Machine-specific paths. Override in Local.props (gitignored) or with -p:InteropPath=... -->
   <Import Project="$(MSBuildThisFileDirectory)../../Local.props" Condition="Exists('$(MSBuildThisFileDirectory)../../Local.props')" />
 
-  <!-- BepInEx and the mod are managed by HML (Moon Sweepers is a custom Steam game there, label steam-5335510).
-       With -p:Deploy=true, builds go into the plugin folder HML installed the release to, so only one copy loads.
-       Never deploy while the game runs: it maps the DLL, and rewriting it in place can crash it. -->
+  <!-- The game is IL2CPP, so there is no Managed folder. Build against:
+         - the interop assemblies BepInEx 6 generates on first launch (<profile>/BepInEx/interop), or a copy of them
+         - BepInEx 6 (BepInEx.Unity.IL2CPP) core DLLs.
+       With -p:Deploy=true the DLL goes into the HML profile's plugin folder. Never deploy while the game runs:
+       it maps the DLL, and rewriting it in place can crash it. -->
   <PropertyGroup>
-    <GamePath Condition="'$(GamePath)' == ''">/var/mnt/data/SteamLibrary/steamapps/common/Moon Sweepers</GamePath>
-    <ProfilePath Condition="'$(ProfilePath)' == ''">$(HOME)/.config/hml/games/steam-5335510/profiles/default</ProfilePath>
-    <ManagedPath>$(GamePath)/MoonSweepers_Data/Managed</ManagedPath>
-    <BepInExCorePath>$(ProfilePath)/BepInEx/core</BepInExCorePath>
+    <ProfilePath Condition="'$(ProfilePath)' == ''">$(HOME)/.config/hml/games/steam-5335510/profiles/il2cpp-test</ProfilePath>
+    <BepInExCorePath Condition="'$(BepInExCorePath)' == ''">$(HOME)/.cache/ms-il2cpp/patched/BepInEx/core</BepInExCorePath>
+    <InteropPath Condition="'$(InteropPath)' == ''">$(HOME)/.cache/ms-il2cpp/interop3</InteropPath>
     <DeployPath>$(ProfilePath)/BepInEx/plugins/darkharasho-moonsweepers-admin-menu</DeployPath>
   </PropertyGroup>
 
-  <!-- Without the game installed (CI), or with -p:UseRefs=true, build against the reference
-       assemblies from scripts/update-refs.sh. -->
-  <PropertyGroup Condition="'$(UseRefs)' == 'true' Or !Exists('$(ManagedPath)/Assembly-CSharp.dll')">
-    <ManagedPath>$(MSBuildThisFileDirectory)../../lib/refs</ManagedPath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(UseRefs)' == 'true' Or !Exists('$(BepInExCorePath)/BepInEx.dll')">
-    <BepInExCorePath>$(MSBuildThisFileDirectory)../../lib/refs</BepInExCorePath>
-  </PropertyGroup>
-
-  <!-- Keep in sync with game_dlls/bepinex_dlls in scripts/update-refs.sh. -->
   <ItemGroup>
-    <Reference Include="BepInEx" HintPath="$(BepInExCorePath)/BepInEx.dll" Private="false" />
+    <Reference Include="BepInEx.Core" HintPath="$(BepInExCorePath)/BepInEx.Core.dll" Private="false" />
+    <Reference Include="BepInEx.Unity.IL2CPP" HintPath="$(BepInExCorePath)/BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="BepInEx.Unity.Common" HintPath="$(BepInExCorePath)/BepInEx.Unity.Common.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(BepInExCorePath)/0Harmony.dll" Private="false" />
-    <Reference Include="Assembly-CSharp" HintPath="$(ManagedPath)/Assembly-CSharp.dll" Private="false" />
-    <Reference Include="com.rlabrecque.steamworks.net" HintPath="$(ManagedPath)/com.rlabrecque.steamworks.net.dll" Private="false" />
-    <Reference Include="UnityEngine" HintPath="$(ManagedPath)/UnityEngine.dll" Private="false" />
-    <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedPath)/UnityEngine.CoreModule.dll" Private="false" />
-    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(ManagedPath)/UnityEngine.IMGUIModule.dll" Private="false" />
-    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(ManagedPath)/UnityEngine.PhysicsModule.dll" Private="false" />
-    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(ManagedPath)/UnityEngine.TextRenderingModule.dll" Private="false" />
-    <Reference Include="UnityEngine.UI" HintPath="$(ManagedPath)/UnityEngine.UI.dll" Private="false" />
-    <Reference Include="Unity.InputSystem" HintPath="$(ManagedPath)/Unity.InputSystem.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(BepInExCorePath)/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Common" HintPath="$(BepInExCorePath)/Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(InteropPath)/Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="Assembly-CSharp" HintPath="$(InteropPath)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="com.rlabrecque.steamworks.net" HintPath="$(InteropPath)/com.rlabrecque.steamworks.net.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(InteropPath)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(InteropPath)/UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(InteropPath)/UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(InteropPath)/UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(InteropPath)/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="Unity.InputSystem" HintPath="$(InteropPath)/Unity.InputSystem.dll" Private="false" />
   </ItemGroup>
 
   <Target Name="DeployToProfile" AfterTargets="Build" Condition="'$(Deploy)' == 'true' And Exists('$(ProfilePath)/BepInEx/plugins')">

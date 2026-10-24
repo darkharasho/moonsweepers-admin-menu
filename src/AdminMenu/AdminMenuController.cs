@@ -13,8 +13,10 @@ namespace AdminMenu
     /// keyboard or mouse for play, Esc included, while it's set), <c>MoonWalker.UIBlocked</c> on in a shift, a free
     /// cursor, and the uGUI event system off so clicks don't reach the game's buttons underneath.
     /// </summary>
-    internal sealed partial class AdminMenuController : MonoBehaviour
+    public sealed partial class AdminMenuController : MonoBehaviour
     {
+        public AdminMenuController(IntPtr ptr) : base(ptr) { }
+
         private const float ReferenceHeight = 1080f;
         private const float WindowWidth = 1000f;
         private const float WindowHeight = 760f;
@@ -38,7 +40,8 @@ namespace AdminMenu
         private bool _statusError;
         private string _toast;
         private float _toastUntil;
-        private Vector2 _scroll;
+        private float _scroll;
+        private float _contentHeight;
         /// <summary>Taken on Layout and drawn on Repaint, so a kick between the two can't change IMGUI's control count.</summary>
         private List<MoonSteamLobby.Member> _members = new List<MoonSteamLobby.Member>();
         private List<RemovedPlayer> _removed = new List<RemovedPlayer>();
@@ -93,7 +96,7 @@ namespace AdminMenu
                 KeepInputLocked();
             }
 
-            if (Hotkey.WasPressed(Plugin.ToggleKey.Value))
+            if (Hotkey.WasPressed(Plugin.ToggleShortcut))
                 Toggle();
         }
 
@@ -140,7 +143,7 @@ namespace AdminMenu
             }
 
             _open = true;
-            _scroll = Vector2.zero;
+            _scroll = 0f;
             _armedId = 0;
             SetStatus(Kicks.Available ? "" : "Kicking is unavailable on this game version: see the BepInEx log.", !Kicks.Available);
             KeepInputLocked();
@@ -196,7 +199,7 @@ namespace AdminMenu
         /// <summary>The local player, found the way MoonCrewSession finds it.</summary>
         private static MoonWalker FindLocalWalker()
         {
-            foreach (var walker in FindObjectsByType<MoonWalker>(FindObjectsInactive.Exclude))
+            foreach (var walker in HostTools.Walkers())
             {
                 if (walker != null && walker.world != null)
                     return walker;
@@ -235,127 +238,155 @@ namespace AdminMenu
 
         private void DrawToast(float width)
         {
-            var content = new GUIContent(_toast);
-            var size = Theme.Toast.CalcSize(content);
-            GUI.Label(new Rect((width - size.x) / 2f, ReferenceHeight * 0.12f, size.x, size.y), content, Theme.Toast);
+            var w = Theme.TextWidth(_toast, Theme.Toast) + 40f;
+            var h = Theme.Toast.fontSize * 1.35f + 24f;
+            GUI.Label(new Rect((width - w) / 2f, ReferenceHeight * 0.12f, w, h), _toast, Theme.Toast);
         }
 
         private void DrawMenu(float width)
         {
             GUI.DrawTexture(new Rect(0f, 0f, width, ReferenceHeight), Theme.Dim);
             var window = new Rect((width - WindowWidth) / 2f, (ReferenceHeight - WindowHeight) / 2f, WindowWidth, WindowHeight);
-            GUI.Box(window, GUIContent.none, Theme.WindowStyle);
+            GUI.Box(window, "", Theme.WindowStyle);
 
-            GUILayout.BeginArea(new Rect(window.x + 24f, window.y + 20f, window.width - 48f, window.height - 40f));
+            var x = window.x + 24f;
+            var w = window.width - 48f;
+            var y = window.y + 20f;
 
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("ADMIN MENU", Theme.Title);
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Close", Theme.Button, GUILayout.Width(110f), GUILayout.Height(40f)))
+            GUI.Label(new Rect(x, y, w - 130f, 48f), "ADMIN MENU", Theme.Title);
+            if (GUI.Button(new Rect(x + w - 110f, y + 4f, 110f, 40f), "Close", Theme.Button))
                 Close(lost: false);
-            GUILayout.EndHorizontal();
+            y += 54f;
 
             if (Event.current.type == EventType.Layout)
             {
-                _members = new List<MoonSteamLobby.Member>(MoonSteamLobby.Members);
+                _members = new List<MoonSteamLobby.Member>();
+                var live = MoonSteamLobby.members;
+                for (var i = 0; live != null && i < live.Count; i++)
+                    _members.Add(live.get_Item(i));
                 _removed = Kicks.List.Entries();
                 SnapshotHostTools();
             }
             var crewName = string.IsNullOrEmpty(MoonSteamLobby.CrewName) ? "Your crew" : MoonSteamLobby.CrewName;
-            GUILayout.Label($"{crewName} · {_members.Count} of {MoonSteamLobby.MaxCrew}", Theme.MutedText);
+            GUI.Label(new Rect(x, y, w, 26f), $"{crewName} · {_members.Count} of {MoonSteamLobby.MaxCrew}", Theme.MutedText);
+            y += 30f;
 
-            GUILayout.BeginHorizontal();
             for (var i = 0; i < TabNames.Length; i++)
             {
-                if (GUILayout.Button(TabNames[i], (Tab)i == _tab ? Theme.TabOn : Theme.Button, GUILayout.Width(140f), GUILayout.Height(40f)) && (Tab)i != _tab)
+                if (GUI.Button(new Rect(x + i * 148f, y, 140f, 40f), TabNames[i], (Tab)i == _tab ? Theme.TabOn : Theme.Button) && (Tab)i != _tab)
                 {
                     _tab = (Tab)i;
-                    _scroll = Vector2.zero;
+                    _scroll = 0f;
                     _armedId = 0;
                 }
             }
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-            GUILayout.Space(4f);
+            y += 48f;
 
-            _scroll = GUILayout.BeginScrollView(_scroll, GUILayout.ExpandHeight(true));
-            switch (_tab)
-            {
-                case Tab.Money:
-                    DrawMoney();
-                    break;
-                case Tab.Give:
-                    DrawGive();
-                    break;
-                case Tab.World:
-                    DrawWorld();
-                    break;
-                default:
-                    DrawCrew();
-                    break;
-            }
-            GUILayout.EndScrollView();
+            var statusHeight = 30f;
+            var view = new Rect(x, y, w, window.yMax - 20f - statusHeight - y);
+            DrawScrolled(view);
 
-            GUILayout.Space(6f);
-            GUILayout.Label(string.IsNullOrEmpty(_status) ? " " : _status, _statusError ? Theme.ErrorText : Theme.MutedText);
-
-            GUILayout.EndArea();
+            GUI.Label(new Rect(x, window.yMax - 20f - statusHeight + 4f, w, statusHeight), string.IsNullOrEmpty(_status) ? " " : _status, _statusError ? Theme.ErrorText : Theme.MutedText);
         }
 
-        private void DrawCrew()
+        /// <summary>The active tab in a clipped, scrollable area: mouse wheel or the bar on the right.</summary>
+        private void DrawScrolled(Rect view)
         {
-            GUILayout.Label("CREW", Theme.Heading);
+            const float bar = 20f;
+            var maxScroll = Mathf.Max(0f, _contentHeight - view.height);
+            var evt = Event.current;
+            if (evt.type == EventType.ScrollWheel && view.Contains(evt.mousePosition))
+            {
+                _scroll += evt.delta.y * 40f;
+                evt.Use();
+            }
+            _scroll = Mathf.Clamp(_scroll, 0f, maxScroll);
+
+            var pane = new Pane(view.width - bar - 8f, view.height, -_scroll);
+            GUI.BeginGroup(view);
+            try
+            {
+                switch (_tab)
+                {
+                    case Tab.Money:
+                        DrawMoney(pane);
+                        break;
+                    case Tab.Give:
+                        DrawGive(pane);
+                        break;
+                    case Tab.World:
+                        DrawWorld(pane);
+                        break;
+                    default:
+                        DrawCrew(pane);
+                        break;
+                }
+            }
+            finally
+            {
+                GUI.EndGroup();
+            }
+            _contentHeight = pane.Y + _scroll;
+
+            if (maxScroll > 0f)
+                _scroll = GUI.VerticalSlider(new Rect(view.xMax - bar, view.y, bar, view.height), _scroll, 0f, maxScroll);
+        }
+
+        private void DrawCrew(Pane pane)
+        {
+            pane.Heading("CREW");
             foreach (var member in _members)
-                DrawMember(member);
+                DrawMember(pane, member);
 
-            GUILayout.Label("REMOVED", Theme.Heading);
+            pane.Heading("REMOVED");
             if (_removed.Count == 0)
-                GUILayout.Label("Nobody. Kicks last for this crew; bans apply to every crew you host.", Theme.MutedText);
+                pane.Text("Nobody. Kicks last for this crew; bans apply to every crew you host.", Theme.MutedText);
             foreach (var player in _removed)
-                DrawRemoved(player);
+                DrawRemoved(pane, player);
 
-            GUILayout.Space(8f);
-            GUILayout.Label(
+            pane.Space(8f);
+            pane.Text(
                 "A kicked player is cut off from your Moon and can't rejoin your shift. Without this mod they stay in the " +
                 "Steam lobby until they leave, and crewmates without it can still see them; anyone with the mod drops them too. " +
                 "Knock down bowls a crewmate over the way a vehicle does; they get straight back up.",
                 Theme.MutedText);
         }
 
-        private void DrawMember(MoonSteamLobby.Member member)
+        private void DrawMember(Pane pane, MoonSteamLobby.Member member)
         {
-            GUILayout.BeginHorizontal(Theme.RowStyle, GUILayout.Height(52f));
-            var name = string.IsNullOrEmpty(member.name) ? Kicks.NameFor(member.id) : member.name;
+            var line = pane.Card();
+            var id = member.id;
+            var name = string.IsNullOrEmpty(member.name) ? Kicks.NameFor(id) : (string)member.name;
             var tag = member.local ? "  (you, host)" : member.host ? "  (host)" : "";
-            GUILayout.Label(name + tag, Theme.Body, GUILayout.Height(36f));
-            GUILayout.FlexibleSpace();
-            if (KickRules.CanRemove(member.id, MoonSteam.SteamId, MoonSteamLobby.HostId))
+            // Right-hand buttons first so the name takes what's left.
+            if (KickRules.CanRemove(id, MoonSteam.SteamId, MoonSteamLobby.HostId))
             {
-                if (_inShift.Contains(member.id) && GUILayout.Button("Knock down", Theme.Button, GUILayout.Height(36f)))
-                    Run("Knock down", () => HostTools.Knock(member.id));
-                ConfirmButton(member.id, "Kick", () => Kicks.Remove(member.id, ban: false));
-                ConfirmButton(member.id, "Ban", () => Kicks.Remove(member.id, ban: true));
+                ConfirmButton(line, id, "Ban", () => Kicks.Remove(id, ban: true));
+                ConfirmButton(line, id, "Kick", () => Kicks.Remove(id, ban: false));
+                if (_inShift.Contains(id) && line.ButtonRight("Knock down", Theme.Button))
+                    Run("Knock down", () => HostTools.Knock(id));
             }
-            GUILayout.EndHorizontal();
+            line.Label(name + tag, Theme.Body);
         }
 
-        private void DrawRemoved(RemovedPlayer player)
+        private void DrawRemoved(Pane pane, RemovedPlayer player)
         {
-            GUILayout.BeginHorizontal(Theme.RowStyle, GUILayout.Height(52f));
-            GUILayout.Label($"{Kicks.NameFor(player.Id)}  · {(player.Banned ? "banned" : "kicked")}", Theme.Body, GUILayout.Height(36f));
-            GUILayout.FlexibleSpace();
+            var line = pane.Card();
+            var id = player.Id;
+            if (line.ButtonRight("Allow back", Theme.Button))
+                Run("Allow back", () => Kicks.Pardon(id));
             if (!player.Banned)
-                ConfirmButton(player.Id, "Ban", () => Kicks.Remove(player.Id, ban: true));
-            if (GUILayout.Button("Allow back", Theme.Button, GUILayout.Height(36f)))
-                Run("Allow back", () => Kicks.Pardon(player.Id));
-            GUILayout.EndHorizontal();
+                ConfirmButton(line, id, "Ban", () => Kicks.Remove(id, ban: true));
+            line.Label($"{Kicks.NameFor(id)}  · {(player.Banned ? "banned" : "kicked")}", Theme.Body);
         }
 
-        /// <summary>The first click only arms the button for three seconds; the second does the work.</summary>
-        private void ConfirmButton(ulong id, string action, Func<string> work)
+        /// <summary>The first click only arms the button for three seconds; the second does the work. Placed from the right.</summary>
+        private void ConfirmButton(Line line, ulong id, string action, Func<string> work, bool fromRight = true)
         {
             var armed = _armedId == id && _armedAction == action && Time.unscaledTime < _armedUntil;
-            if (!GUILayout.Button(armed ? $"Click again: {action}" : action, Theme.DangerButton, GUILayout.Height(36f)))
+            var text = armed ? $"Click again: {action}" : action;
+            var clicked = fromRight ? line.ButtonRight(text, Theme.DangerButton) : line.Button(text, Theme.DangerButton);
+            if (!clicked)
                 return;
             if (!armed)
             {
