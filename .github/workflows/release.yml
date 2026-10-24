@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Check tag matches manifest version
+        run: |
+          version="$(jq -r .version_number thunderstore/manifest.json)"
+          # A suffixed tag (v1.2.3-beta.1) is a GitHub-only prerelease: Thunderstore is skipped.
+          if [ "v$version" != "${GITHUB_REF_NAME%%-*}" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match manifest version $version"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          case "$GITHUB_REF_NAME" in
+            *-*) echo "PRERELEASE=true" >> "$GITHUB_ENV" ;;
+            *) echo "PRERELEASE=false" >> "$GITHUB_ENV" ;;
+          esac
+
+      # The game isn't installed here, so the build uses the reference assemblies in lib/refs.
+      - name: Build and package
+        run: scripts/package.sh
+
+      - name: Release notes from changelog
+        run: |
+          awk -v v="## $VERSION" '$0 == v {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
+          cat >> notes.md <<EOF
+
+          For Moon Sweepers. Install with r2modman, or download \`darkharasho-MoonSweepersAdminMenu-$VERSION.zip\` below and use **Settings → Import local mod**. Requires BepInExPack 5.4.2305. Only the host needs it; press F1 while you host a crew.
+          EOF
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip="dist/darkharasho-MoonSweepersAdminMenu-$VERSION.zip"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$zip" --clobber
+            # Deleting a tag to re-push it turns its release into a draft; publish it again.
+            gh release edit "$GITHUB_REF_NAME" --draft=false
+          else
+            gh release create "$GITHUB_REF_NAME" "$zip" --title "AdminMenu ${GITHUB_REF_NAME#v}" --notes-file notes.md --prerelease=$PRERELEASE
+          fi
+
+      # Skips versions already on Thunderstore, so re-pushing a tag is safe.
+      # Thunderstore has no Moon Sweepers community yet: the slug is a placeholder, so this step may fail
+      # without failing the release. Set the real slug once the community exists and drop continue-on-error.
+      - name: Publish to Thunderstore
+        if: env.PRERELEASE == 'false'
+        continue-on-error: true
+        env:
+          THUNDERSTORE_TOKEN: ${{ secrets.THUNDERSTORE_TOKEN }}
+        run: scripts/thunderstore-publish.sh "dist/darkharasho-MoonSweepersAdminMenu-$VERSION.zip" --community moon-sweepers --categories mods,tools
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: darkharasho-MoonSweepersAdminMenu-${{ env.VERSION }}
+          path: dist/*.zip

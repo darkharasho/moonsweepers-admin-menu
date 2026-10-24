@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>AdminMenu</AssemblyName>
+    <RootNamespace>AdminMenu</RootNamespace>
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <!-- Machine-specific paths. Override in Local.props (gitignored) or with -p:GamePath=... -->
+  <Import Project="$(MSBuildThisFileDirectory)../../Local.props" Condition="Exists('$(MSBuildThisFileDirectory)../../Local.props')" />
+
+  <!-- There's no r2modman community for Moon Sweepers yet, so BepInEx is installed straight into the game folder. -->
+  <PropertyGroup>
+    <GamePath Condition="'$(GamePath)' == ''">/var/mnt/data/SteamLibrary/steamapps/common/Moon Sweepers</GamePath>
+    <ProfilePath Condition="'$(ProfilePath)' == ''">$(GamePath)</ProfilePath>
+    <ManagedPath>$(GamePath)/MoonSweepers_Data/Managed</ManagedPath>
+    <BepInExCorePath>$(ProfilePath)/BepInEx/core</BepInExCorePath>
+    <DeployPath>$(ProfilePath)/BepInEx/plugins/darkharasho-MoonSweepersAdminMenu</DeployPath>
+  </PropertyGroup>
+
+  <!-- Without the game installed (CI), or with -p:UseRefs=true, build against the reference
+       assemblies from scripts/update-refs.sh. -->
+  <PropertyGroup Condition="'$(UseRefs)' == 'true' Or !Exists('$(ManagedPath)/Assembly-CSharp.dll')">
+    <ManagedPath>$(MSBuildThisFileDirectory)../../lib/refs</ManagedPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(UseRefs)' == 'true' Or !Exists('$(BepInExCorePath)/BepInEx.dll')">
+    <BepInExCorePath>$(MSBuildThisFileDirectory)../../lib/refs</BepInExCorePath>
+  </PropertyGroup>
+
+  <!-- Keep in sync with game_dlls/bepinex_dlls in scripts/update-refs.sh. -->
+  <ItemGroup>
+    <Reference Include="BepInEx" HintPath="$(BepInExCorePath)/BepInEx.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCorePath)/0Harmony.dll" Private="false" />
+    <Reference Include="Assembly-CSharp" HintPath="$(ManagedPath)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="com.rlabrecque.steamworks.net" HintPath="$(ManagedPath)/com.rlabrecque.steamworks.net.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(ManagedPath)/UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedPath)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(ManagedPath)/UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(ManagedPath)/UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(ManagedPath)/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="Unity.InputSystem" HintPath="$(ManagedPath)/Unity.InputSystem.dll" Private="false" />
+  </ItemGroup>
+
+  <Target Name="DeployToProfile" AfterTargets="Build" Condition="Exists('$(ProfilePath)/BepInEx/plugins')">
+    <MakeDir Directories="$(DeployPath)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployPath)" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) to $(DeployPath)" />
+  </Target>
+
+</Project>

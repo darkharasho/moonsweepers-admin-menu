@@ -1,0 +1,9 @@
+{
+    "name": "MoonSweepersAdminMenu",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/darkharasho/moonsweepers-admin-menu",
+    "description": "Host admin menu for Moon Sweepers (F1): kick or ban crewmates. Kicked players are cut off from your Moon and can't rejoin your shift.",
+    "dependencies": [
+        "BepInEx-BepInExPack-5.4.2305"
+    ]
+}
