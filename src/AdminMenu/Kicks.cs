@@ -96,7 +96,7 @@ namespace AdminMenu
             var removed = 0;
             for (var i = members.Count - 1; i >= 0; i--)
             {
-                var m = members.get_Item(i);
+                var m = members[i];
                 if (m != null && !m.local && !m.host && IsBlocked(m.id))
                 {
                     members.RemoveAt(i);

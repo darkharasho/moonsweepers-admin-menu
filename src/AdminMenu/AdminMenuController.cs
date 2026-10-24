@@ -263,7 +263,7 @@ namespace AdminMenu
                 _members = new List<MoonSteamLobby.Member>();
                 var live = MoonSteamLobby.members;
                 for (var i = 0; live != null && i < live.Count; i++)
-                    _members.Add(live.get_Item(i));
+                    _members.Add(live[i]);
                 _removed = Kicks.List.Entries();
                 SnapshotHostTools();
             }

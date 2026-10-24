@@ -32,11 +32,11 @@ namespace AdminMenu
             var keyboard = Keyboard.current;
             if (keyboard == null || shortcut.MainKey == KeyCode.None)
                 return false;
-            if (!TryGetKey(shortcut.MainKey, out var main) || !keyboard.get_Item(main).wasPressedThisFrame)
+            if (!TryGetKey(shortcut.MainKey, out var main) || !keyboard[main].wasPressedThisFrame)
                 return false;
             foreach (var modifier in shortcut.Modifiers)
             {
-                if (!TryGetKey(modifier, out var key) || !keyboard.get_Item(key).isPressed)
+                if (!TryGetKey(modifier, out var key) || !keyboard[key].isPressed)
                     return false;
             }
             return true;

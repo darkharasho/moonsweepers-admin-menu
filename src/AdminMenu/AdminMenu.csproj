@@ -25,7 +25,7 @@
   <PropertyGroup>
     <ProfilePath Condition="'$(ProfilePath)' == ''">$(HOME)/.config/hml/games/steam-5335510/profiles/il2cpp-test</ProfilePath>
     <BepInExCorePath Condition="'$(BepInExCorePath)' == ''">$(HOME)/.cache/ms-il2cpp/patched/BepInEx/core</BepInExCorePath>
-    <InteropPath Condition="'$(InteropPath)' == ''">$(HOME)/.cache/ms-il2cpp/interop3</InteropPath>
+    <InteropPath Condition="'$(InteropPath)' == ''">$(HOME)/.cache/ms-il2cpp/interop4</InteropPath>
     <DeployPath>$(ProfilePath)/BepInEx/plugins/darkharasho-moonsweepers-admin-menu</DeployPath>
   </PropertyGroup>
 
