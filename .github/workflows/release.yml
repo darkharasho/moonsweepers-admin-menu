@@ -40,7 +40,7 @@ jobs:
           awk -v v="## $VERSION" '$0 == v {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
           cat >> notes.md <<EOF
 
-          For Moon Sweepers. Install with r2modman, or download \`darkharasho-MoonSweepersAdminMenu-$VERSION.zip\` below and use **Settings → Import local mod**. Requires BepInExPack 5.4.2305. Only the host needs it; press F1 while you host a crew.
+          For Moon Sweepers. Install with r2modman, or download \`darkharasho-MoonSweepersAdminMenu-$VERSION.zip\` below and use **Settings → Import local mod**. Requires BepInEx 6 for IL2CPP; see the README for which builds can load the game. Only the host needs it; press F1 while you host a crew.
           EOF
 
       - name: Create or update GitHub release

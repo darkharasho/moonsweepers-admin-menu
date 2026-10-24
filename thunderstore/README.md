@@ -35,4 +35,4 @@ Moon Sweepers has no kick of its own, and Steam won't let a lobby owner remove a
 ## Notes
 - Only the host can use the menu, and nothing in it needs crewmates to have the mod. It's safe for everyone to install: crewmates who have it enforce your kicks.
 - Esc or F1 closes the menu. The key (text such as `F1` or `F1 + LeftControl`), the Esc behaviour and the ban list are in `BepInEx/config/com.darkharasho.moonsweepers.adminmenu.cfg`.
-- Needs BepInEx 6 for IL2CPP (BepInExPack_IL2CPP); the game is IL2CPP since 2026-10-24. Without a mod manager, install it into the game folder. On Linux/Steam Deck, set the launch options to `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
+- Needs BepInEx 6 for IL2CPP; the game is IL2CPP since 2026-10-24. Released BepInEx 6 builds (be.791, Il2CppInterop 1.5) can't load this game yet: it's on Unity 6000.6 with IL2CPP metadata v108, which needs a newer Cpp2IL and Il2CppInterop than they ship. The menu works once BepInEx can load the game. On Linux/Steam Deck, set the launch options to `WINEDLLOVERRIDES="winhttp=n,b" %command%`.

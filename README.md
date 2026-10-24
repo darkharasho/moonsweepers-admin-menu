@@ -34,11 +34,11 @@ Moon Sweepers has no kick of its own, and Steam won't let a lobby owner remove a
 
 ## Notes
 - Only the host can use the menu, and nothing in it needs crewmates to have the mod. It's safe for everyone to install: crewmates who have it enforce your kicks.
-- Esc or F1 closes the menu. The key, the Esc behaviour and the ban list are in `BepInEx/config/com.darkharasho.moonsweepers.adminmenu.cfg`.
-- Without a mod manager, install BepInEx 5 into the game folder. On Linux/Steam Deck, set the launch options to `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
+- Esc or F1 closes the menu. The key (text such as `F1` or `F1 + LeftControl`), the Esc behaviour and the ban list are in `BepInEx/config/com.darkharasho.moonsweepers.adminmenu.cfg`.
+- Needs BepInEx 6 for IL2CPP; the game is IL2CPP since 2026-10-24. Released BepInEx 6 builds (be.791, Il2CppInterop 1.5) can't load this game yet: it's on Unity 6000.6 with IL2CPP metadata v108, which needs a newer Cpp2IL and Il2CppInterop than they ship. The menu works once BepInEx can load the game. On Linux/Steam Deck, set the launch options to `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
 
 ## Building
 
-- `dotnet build src/AdminMenu/AdminMenu.csproj -c Release` builds against the installed game (path in the csproj, or `-p:GamePath=...` / `Local.props`) and, with `-p:Deploy=true`, copies the DLL into the HML profile's plugin folder (not while the game is running). Without the game it builds against `lib/refs`.
+- `dotnet build src/AdminMenu/AdminMenu.csproj -c Release` builds against the interop assemblies BepInEx generated for the game (`-p:InteropPath=...` and `-p:BepInExCorePath=...`, or `Local.props`) and, with `-p:Deploy=true`, copies the DLL into the HML profile's plugin folder (not while the game is running). If those folders don't exist it builds against `lib/refs` (`scripts/update-refs.sh` regenerates them).
 - `dotnet test tests/AdminMenu.Tests` runs the unit tests.
 - `scripts/package.sh` builds the Thunderstore zip into `dist/`.

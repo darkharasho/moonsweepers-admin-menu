@@ -20,13 +20,21 @@
   <!-- The game is IL2CPP, so there is no Managed folder. Build against:
          - the interop assemblies BepInEx 6 generates on first launch (<profile>/BepInEx/interop), or a copy of them
          - BepInEx 6 (BepInEx.Unity.IL2CPP) core DLLs.
+       If either is missing, lib/refs is used instead.
        With -p:Deploy=true the DLL goes into the HML profile's plugin folder. Never deploy while the game runs:
        it maps the DLL, and rewriting it in place can crash it. -->
   <PropertyGroup>
-    <ProfilePath Condition="'$(ProfilePath)' == ''">$(HOME)/.config/hml/games/steam-5335510/profiles/il2cpp-test</ProfilePath>
+    <ProfilePath Condition="'$(ProfilePath)' == ''">$(HOME)/.config/hml/games/steam-5335510/profiles/default</ProfilePath>
     <BepInExCorePath Condition="'$(BepInExCorePath)' == ''">$(HOME)/.cache/ms-il2cpp/patched/BepInEx/core</BepInExCorePath>
     <InteropPath Condition="'$(InteropPath)' == ''">$(HOME)/.cache/ms-il2cpp/interop4</InteropPath>
     <DeployPath>$(ProfilePath)/BepInEx/plugins/darkharasho-moonsweepers-admin-menu</DeployPath>
+  </PropertyGroup>
+
+  <!-- Without the game (CI), build against the reference-only copies in lib/refs. -->
+  <PropertyGroup>
+    <RefsPath>$(MSBuildThisFileDirectory)../../lib/refs</RefsPath>
+    <BepInExCorePath Condition="!Exists('$(BepInExCorePath)/BepInEx.Unity.IL2CPP.dll')">$(RefsPath)</BepInExCorePath>
+    <InteropPath Condition="!Exists('$(InteropPath)/Assembly-CSharp.dll')">$(RefsPath)</InteropPath>
   </PropertyGroup>
 
   <ItemGroup>
