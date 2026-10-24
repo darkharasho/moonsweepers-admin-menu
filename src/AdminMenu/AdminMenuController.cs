@@ -55,6 +55,8 @@ namespace AdminMenu
             try
             {
                 Kicks.Tick();
+                if (_open)
+                    MenuInput.Poll(Screen.height / ReferenceHeight);
                 Tick();
             }
             catch (Exception e)
@@ -85,6 +87,11 @@ namespace AdminMenu
                 if (MenuGate.ShouldAutoClose(MoonSteamLobby.InLobby, MoonSteamLobby.IsHost, Loading()))
                 {
                     Close(lost: true);
+                    return;
+                }
+                if (MenuInput.Focus >= 0 && Hotkey.EscapePressed())
+                {
+                    MenuInput.Focus = -1;
                     return;
                 }
                 if (Plugin.CloseOnEscape.Value && Hotkey.EscapePressed())
@@ -142,6 +149,7 @@ namespace AdminMenu
                 _disabledEvents = true;
             }
 
+            MenuInput.Reset();
             _open = true;
             _scroll = 0f;
             _armedId = 0;
@@ -155,6 +163,7 @@ namespace AdminMenu
             if (!_open)
                 return;
             _open = false;
+            MenuInput.Reset();
 
             if (_setTyping)
                 MoonInput.Typing = false;
@@ -213,6 +222,15 @@ namespace AdminMenu
                 return;
             try
             {
+                var type = Event.current.type;
+                if (_open && type == EventType.KeyDown)
+                    MenuInput.Key(Event.current);
+                if (_open && type == EventType.Layout)
+                    SnapshotLists();
+                // Only Repaint draws and handles input, so a click is acted on exactly once per frame.
+                if (type != EventType.Repaint)
+                    return;
+
                 Theme.Ensure();
                 GUI.depth = -1000;
                 var scale = Screen.height / ReferenceHeight;
@@ -220,9 +238,15 @@ namespace AdminMenu
                 var width = Screen.width / scale;
 
                 if (_open)
+                {
+                    MenuInput.BeginPass();
                     DrawMenu(width);
+                    MenuInput.EndPass();
+                }
                 else
+                {
                     DrawToast(width);
+                }
             }
             catch (Exception e)
             {
@@ -243,93 +267,103 @@ namespace AdminMenu
             GUI.Label(new Rect((width - w) / 2f, ReferenceHeight * 0.12f, w, h), _toast, Theme.Toast);
         }
 
+        private void SnapshotLists()
+        {
+            _members = new List<MoonSteamLobby.Member>();
+            var live = MoonSteamLobby.members;
+            for (var i = 0; live != null && i < live.Count; i++)
+                _members.Add(live[i]);
+            _removed = Kicks.List.Entries();
+            SnapshotHostTools();
+        }
+
         private void DrawMenu(float width)
         {
             GUI.DrawTexture(new Rect(0f, 0f, width, ReferenceHeight), Theme.Dim);
             var window = new Rect((width - WindowWidth) / 2f, (ReferenceHeight - WindowHeight) / 2f, WindowWidth, WindowHeight);
-            GUI.Box(window, "", Theme.WindowStyle);
+            GUI.Label(window, "", Theme.WindowStyle);
 
             var x = window.x + 24f;
             var w = window.width - 48f;
-            var y = window.y + 20f;
+            var top = window.y + 20f;
+            var headerHeight = 54f + 30f + 48f;
+            var statusHeight = 30f;
+            var view = new Rect(x, top + headerHeight, w, window.yMax - 20f - statusHeight - (top + headerHeight));
 
+            // Content first; the covers below hide any row that is half outside the viewport.
+            DrawScrolled(view);
+            var inner = new Rect(window.x + 3f, window.y + 3f, window.width - 6f, window.height - 6f);
+            GUI.Label(new Rect(inner.x, inner.y, inner.width, view.y - inner.y), "", Theme.Cover);
+            GUI.Label(new Rect(inner.x, view.yMax, inner.width, inner.yMax - view.yMax), "", Theme.Cover);
+
+            var y = top;
             GUI.Label(new Rect(x, y, w - 130f, 48f), "ADMIN MENU", Theme.Title);
-            if (GUI.Button(new Rect(x + w - 110f, y + 4f, 110f, 40f), "Close", Theme.Button))
+            if (Header(new Rect(x + w - 110f, y + 4f, 110f, 40f), "Close", Theme.Button))
                 Close(lost: false);
             y += 54f;
 
-            if (Event.current.type == EventType.Layout)
-            {
-                _members = new List<MoonSteamLobby.Member>();
-                var live = MoonSteamLobby.members;
-                for (var i = 0; live != null && i < live.Count; i++)
-                    _members.Add(live[i]);
-                _removed = Kicks.List.Entries();
-                SnapshotHostTools();
-            }
             var crewName = string.IsNullOrEmpty(MoonSteamLobby.CrewName) ? "Your crew" : MoonSteamLobby.CrewName;
             GUI.Label(new Rect(x, y, w, 26f), $"{crewName} · {_members.Count} of {MoonSteamLobby.MaxCrew}", Theme.MutedText);
             y += 30f;
 
             for (var i = 0; i < TabNames.Length; i++)
             {
-                if (GUI.Button(new Rect(x + i * 148f, y, 140f, 40f), TabNames[i], (Tab)i == _tab ? Theme.TabOn : Theme.Button) && (Tab)i != _tab)
+                if (Header(new Rect(x + i * 148f, y, 140f, 40f), TabNames[i], (Tab)i == _tab ? Theme.TabOn : Theme.Button) && (Tab)i != _tab)
                 {
                     _tab = (Tab)i;
                     _scroll = 0f;
                     _armedId = 0;
                 }
             }
-            y += 48f;
-
-            var statusHeight = 30f;
-            var view = new Rect(x, y, w, window.yMax - 20f - statusHeight - y);
-            DrawScrolled(view);
 
             GUI.Label(new Rect(x, window.yMax - 20f - statusHeight + 4f, w, statusHeight), string.IsNullOrEmpty(_status) ? " " : _status, _statusError ? Theme.ErrorText : Theme.MutedText);
         }
 
-        /// <summary>The active tab in a clipped, scrollable area: mouse wheel or the bar on the right.</summary>
+        /// <summary>A button outside the scrolled area.</summary>
+        private static bool Header(Rect rect, string text, Btn style)
+        {
+            var hot = rect.Contains(MenuInput.Pos);
+            GUI.Label(rect, text, hot ? style.Hover : style.Normal);
+            if (!hot || !MenuInput.Click)
+                return false;
+            MenuInput.Click = false;
+            return true;
+        }
+
+        /// <summary>The active tab in a viewport: mouse wheel scrolls, a thin bar on the right shows where you are.</summary>
         private void DrawScrolled(Rect view)
         {
-            const float bar = 20f;
+            const float bar = 6f;
             var maxScroll = Mathf.Max(0f, _contentHeight - view.height);
-            var evt = Event.current;
-            if (evt.type == EventType.ScrollWheel && view.Contains(evt.mousePosition))
-            {
-                _scroll += evt.delta.y * 40f;
-                evt.Use();
-            }
+            if (MenuInput.Wheel != 0f && view.Contains(MenuInput.Pos))
+                _scroll += MenuInput.Wheel * 60f;
             _scroll = Mathf.Clamp(_scroll, 0f, maxScroll);
 
-            var pane = new Pane(view.width - bar - 8f, view.height, -_scroll);
-            GUI.BeginGroup(view);
-            try
+            var pane = new Pane(view, view.width - bar - 14f, _scroll);
+            switch (_tab)
             {
-                switch (_tab)
-                {
-                    case Tab.Money:
-                        DrawMoney(pane);
-                        break;
-                    case Tab.Give:
-                        DrawGive(pane);
-                        break;
-                    case Tab.World:
-                        DrawWorld(pane);
-                        break;
-                    default:
-                        DrawCrew(pane);
-                        break;
-                }
-            }
-            finally
-            {
-                GUI.EndGroup();
+                case Tab.Money:
+                    DrawMoney(pane);
+                    break;
+                case Tab.Give:
+                    DrawGive(pane);
+                    break;
+                case Tab.World:
+                    DrawWorld(pane);
+                    break;
+                default:
+                    DrawCrew(pane);
+                    break;
             }
             _contentHeight = pane.Y + _scroll;
 
             if (maxScroll > 0f)
-                _scroll = GUI.VerticalSlider(new Rect(view.xMax - bar, view.y, bar, view.height), _scroll, 0f, maxScroll);
+            {
+                GUI.Label(new Rect(view.xMax - bar, view.y, bar, view.height), "", Theme.Track);
+                var thumbHeight = Mathf.Max(30f, view.height * view.height / _contentHeight);
+                var thumbY = view.y + (view.height - thumbHeight) * (_scroll / maxScroll);
+                GUI.Label(new Rect(view.xMax - bar, thumbY, bar, thumbHeight), "", Theme.Fill);
+            }
         }
 
         private void DrawCrew(Pane pane)

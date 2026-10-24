@@ -77,7 +77,7 @@ namespace AdminMenu
 
             pane.Heading("AMOUNT");
             var line = pane.Row(40f);
-            _amount = line.TextField(_amount ?? "", 16, Theme.Field, 240f);
+            _amount = line.TextField(_amount ?? "", 16, 240f);
             if (line.Button("Add", Theme.Button))
                 RunAmount("Add money", HostTools.AddMoney);
             if (line.Button("Remove", Theme.Button))

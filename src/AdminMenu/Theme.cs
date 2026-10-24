@@ -9,6 +9,13 @@ namespace AdminMenu
     /// gold outline, and off-white text. Moon Sweepers has no UI Toolkit theme to borrow, so the menu is IMGUI, like the
     /// game's own crew notices. Build only inside OnGUI (GUI.skin isn't available elsewhere); layout is by hand, see Ui.cs, so margins aren't used.
     /// </summary>
+    /// <summary>A button's normal and hovered looks (Label only ever draws the normal state, so hover is its own style).</summary>
+    internal sealed class Btn
+    {
+        public readonly GUIStyle Normal, Hover;
+        public Btn(GUIStyle normal, GUIStyle hover) { Normal = normal; Hover = hover; }
+    }
+
     internal static class Theme
     {
         public static readonly Color Window = Rgb(0x17, 0x17, 0x17);
@@ -22,7 +29,8 @@ namespace AdminMenu
         public static readonly Color Muted = Rgb(0xA9, 0xAE, 0xB7);
         public static readonly Color Error = new Color(1f, 0.45f, 0.4f);
 
-        public static GUIStyle WindowStyle, RowStyle, Title, Heading, Body, MutedText, ErrorText, Button, DangerButton, TabOn, Field, Toast;
+        public static GUIStyle WindowStyle, RowStyle, Title, Heading, Body, MutedText, ErrorText, Field, FieldFocus, Toast, Cover, Track, Fill, Thumb;
+        public static Btn Button, DangerButton, TabOn;
         public static Texture2D Dim;
 
         /// <summary>Recreates everything if a scene load destroyed the textures.</summary>
@@ -58,21 +66,26 @@ namespace AdminMenu
             ErrorText.wordWrap = true;
             ErrorText.alignment = TextAnchor.MiddleLeft;
 
-            Button = ButtonStyle(font, Gold);
-            DangerButton = ButtonStyle(font, Error);
-            TabOn = ButtonStyle(font, Gold);
-            TabOn.normal.background = TabOn.hover.background = TabOn.active.background = TabOn.focused.background = Bordered(Gold, Gold, 2);
-            TabOn.normal.textColor = TabOn.hover.textColor = TabOn.active.textColor = TabOn.focused.textColor = Window;
+            // IMGUI's control-id widgets don't work in this build, so everything is a Label and hover is a second style.
+            Button = new Btn(ButtonStyle(font, Gold, false), ButtonStyle(font, Gold, true));
+            DangerButton = new Btn(ButtonStyle(font, Error, false), ButtonStyle(font, Error, true));
+            var on = ButtonStyle(font, Gold, false);
+            on.normal.background = Bordered(Gold, Gold, 2);
+            on.normal.textColor = Window;
+            TabOn = new Btn(on, on);
 
-            Field = MakeLabel(font, 19, Theme.Text, FontStyle.Normal);
-            Field.alignment = TextAnchor.MiddleLeft;
-            Field.normal.background = Bordered(Surface, Line, 1);
-            Field.hover.background = Field.normal.background;
-            Field.focused.background = Field.active.background = Bordered(Surface, Gold, 1);
-            Field.hover.textColor = Field.focused.textColor = Field.active.textColor = Theme.Text;
-            Field.border = Edges(1);
-            Field.padding = Offset(10, 10, 6, 6);
-            Field.margin = Offset(0, 0, 0, 0);
+            Field = FieldStyle(font, Line);
+            FieldFocus = FieldStyle(font, Gold);
+
+            Cover = new GUIStyle(GUI.skin.label) { border = Edges(0) };
+            Cover.normal.background = Solid(Window);
+            Track = new GUIStyle(GUI.skin.label);
+            Track.normal.background = Solid(Control);
+            Fill = new GUIStyle(GUI.skin.label);
+            Fill.normal.background = Solid(Gold);
+            Thumb = new GUIStyle(GUI.skin.label);
+            Thumb.normal.background = Bordered(Text, Gold, 2);
+            Thumb.border = Edges(2);
 
             Toast = MakeLabel(font, 20, Gold, FontStyle.Bold);
             Toast.alignment = TextAnchor.MiddleCenter;
@@ -100,13 +113,21 @@ namespace AdminMenu
             return lines * lineHeight + 4f;
         }
 
-        private static GUIStyle ButtonStyle(Font font, Color outline)
+        private static GUIStyle FieldStyle(Font font, Color outline)
+        {
+            var style = MakeLabel(font, 19, Theme.Text, FontStyle.Normal);
+            style.alignment = TextAnchor.MiddleLeft;
+            style.normal.background = Bordered(Surface, outline, 1);
+            style.border = Edges(1);
+            style.padding = Offset(10, 10, 6, 6);
+            return style;
+        }
+
+        private static GUIStyle ButtonStyle(Font font, Color outline, bool hover)
         {
             var style = MakeLabel(font, 17, Theme.Text, FontStyle.Bold);
             style.alignment = TextAnchor.MiddleCenter;
-            style.normal.background = Bordered(Control, outline, 2);
-            style.hover.background = style.active.background = style.focused.background = Bordered(ControlHover, outline, 2);
-            style.hover.textColor = style.active.textColor = style.focused.textColor = Theme.Text;
+            style.normal.background = Bordered(hover ? ControlHover : Control, outline, 2);
             style.border = Edges(2);
             style.padding = Offset(14, 14, 6, 6);
             style.margin = Offset(6, 0, 0, 0);
