@@ -5,9 +5,9 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
-# The interop assemblies BepInEx generates on first launch, and the BepInEx core it ran with.
+# Our generated interop for the current game build (see regen-interop.sh), and the profile's BepInEx core.
 profile="${PROFILE_PATH:-$HOME/.config/hml/games/steam-5335510/profiles/default}"
-interop="${INTEROP_PATH:-$profile/BepInEx/interop}"
+interop="${INTEROP_PATH:-$HOME/.cache/ms-il2cpp/interop-current}"
 bepinex="${BEPINEX_CORE:-$profile/BepInEx/core}"
 out="$root/lib/refs"
 

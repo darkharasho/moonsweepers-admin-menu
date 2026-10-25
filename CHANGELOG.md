@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- Built against the game update of 2026-10-25 (Steam build 26203101). No changes to the menu.
+- If BepInEx stops loading after a game update ("Interop assemblies are possibly out of date" in the log, then no plugins), the interop assemblies need regenerating; this isn't caused by the mod.
+
 ## 0.3.0
 
 - Ported to the game's IL2CPP build (BepInEx 6). Needs BepInExPack_IL2CPP; the Mono build (0.2.0 and older) no longer loads.

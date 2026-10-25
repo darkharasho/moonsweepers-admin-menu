@@ -13,7 +13,7 @@ namespace AdminMenu
     {
         public const string PluginGuid = "com.darkharasho.moonsweepers.adminmenu";
         public const string PluginName = "AdminMenu";
-        public const string PluginVersion = "0.3.0";
+        public const string PluginVersion = "0.3.1";
 
         internal static new ManualLogSource Log;
         internal static ConfigEntry<string> ToggleKey;

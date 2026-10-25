@@ -4,7 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>AdminMenu</AssemblyName>
     <RootNamespace>AdminMenu</RootNamespace>
-    <Version>0.3.0</Version>
+    <Version>0.3.1</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -26,7 +26,7 @@
   <PropertyGroup>
     <ProfilePath Condition="'$(ProfilePath)' == ''">$(HOME)/.config/hml/games/steam-5335510/profiles/default</ProfilePath>
     <BepInExCorePath Condition="'$(BepInExCorePath)' == ''">$(HOME)/.cache/ms-il2cpp/patched/BepInEx/core</BepInExCorePath>
-    <InteropPath Condition="'$(InteropPath)' == ''">$(HOME)/.cache/ms-il2cpp/interop4</InteropPath>
+    <InteropPath Condition="'$(InteropPath)' == ''">$(HOME)/.cache/ms-il2cpp/interop-current</InteropPath>
     <DeployPath>$(ProfilePath)/BepInEx/plugins/darkharasho-moonsweepers-admin-menu</DeployPath>
   </PropertyGroup>
 
